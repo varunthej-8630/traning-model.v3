@@ -492,6 +492,9 @@ function initListeners() {
   $('ob-start').addEventListener('click', () => {
     $('onboarding-overlay').style.opacity = '0';
     setTimeout(() => { $('onboarding-overlay').style.display = 'none'; }, 600);
+    // Explicitly initialize camera only upon user interaction (fixes Vercel HTTPS / strict browsers)
+    startWebcam();
+    drawLoop();
   });
 
   cfgEpochs.addEventListener('input', () => { cfgEpochsVal.textContent = cfgEpochs.value; });
@@ -712,10 +715,8 @@ async function dlJSON(obj, name) {
 (function init() {
   initListeners();
   loadMobileNet();
-  startWebcam();
-  drawLoop(); // FIX: Call drawLoop to start webcam canvas
   renderAll();
-  logP('SYSTEM INITIALIZED. READY FOR INPUT.', 'sys');
+  logP('SYSTEM INITIALIZED. WAITING FOR LAUNCH SEQUENCE...', 'sys');
 })();
 
 /*
