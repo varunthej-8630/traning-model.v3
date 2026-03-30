@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CUSTOS v3.0 — Guardian Intelligence</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧠</text></svg>">
+  <link rel="icon" href="data:,">
   <link rel="stylesheet" href="trainer.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
@@ -32,7 +32,7 @@
           <div><strong>Model Persistence</strong><br>Save your progress and reload it anytime.</div>
         </div>
       </div>
-      <button class="ob-btn" id="ob-start">LAUNCH SYSTEM →</button>
+      <button class="ob-btn" id="ob-start" disabled style="opacity: 0.6; cursor: wait;"><i class="fa-solid fa-spinner fa-spin"></i> DOWNLOADING AI CORE...</button>
     </div>
   </div>
 
@@ -48,7 +48,7 @@
       </header>
 
       <div class="camera-container">
-        <video id="video" autoplay playsinline muted></video>
+        <video id="video" autoplay playsinline></video>
         <canvas id="canvas"></canvas>
         <div class="cam-overlay">
           <div class="corner top-left"></div>

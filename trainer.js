@@ -13,8 +13,8 @@ const PALETTE = [
 
 /* ── STATE ──────────────────────────────────────────────── */
 let classes = [
-  { id: 0, label: 'class_1', samples: [], color: PALETTE[0] },
-  { id: 1, label: 'class_2', samples: [], color: PALETTE[1] }
+  { id: 0, label: 'class_1', samples: [], previews: [], color: PALETTE[0] },
+  { id: 1, label: 'class_2', samples: [], previews: [], color: PALETTE[1] }
 ];
 let nextClassId   = 2;
 let currentMode   = 'webcam';
@@ -62,15 +62,26 @@ const cfgLR          = $('cfg-lr');
    MOBILENET ENGINE
  ══════════════════════════════════════════════════════════ */
 async function loadMobileNet() {
+  const btn = $('ob-start');
   try {
     trainStatus.textContent = 'SYSTEM: LOADING MOBILENET v2...';
     mobileNet = await mobilenet.load({ version: 2, alpha: 0.5 });
     mobileNetReady = true;
     trainStatus.textContent = 'SYSTEM: READY. COLLECT DATA.';
     console.log('MobileNet V2 Load Success');
+    if (btn) {
+      btn.innerHTML = 'LAUNCH SYSTEM <i class="fa-solid fa-arrow-right"></i>';
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
+    }
   } catch (err) {
     trainStatus.textContent = 'SYSTEM: ERROR LOADING MODEL.';
     console.error('MobileNet Error:', err);
+    if (btn) {
+      btn.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> NETWORK ERROR: COULD NOT LOAD AI';
+      btn.style.cursor = 'not-allowed';
+    }
   }
 }
 
@@ -83,6 +94,15 @@ async function extractFeatures(src) {
   const arr = await embedding.array();
   embedding.dispose();
   return arr;
+}
+
+function addPreview(cls, source) {
+  if (!cls.previews) cls.previews = [];
+  const tmp = document.createElement('canvas');
+  tmp.width = 60; tmp.height = 60;
+  tmp.getContext('2d').drawImage(source, 0, 0, 60, 60);
+  cls.previews.push(tmp.toDataURL('image/jpeg', 0.5));
+  if (cls.previews.length > 4) cls.previews.shift();
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -221,18 +241,15 @@ function renderThumbnails() {
   if (!thumbGrid) return;
   thumbGrid.innerHTML = '';
   classes.forEach(cls => {
-    cls.samples.slice(-4).forEach(s => {
+    (cls.previews || []).forEach(src => {
       const wrap = document.createElement('div');
       wrap.className = 'thumb-node';
-      if (s.imageData) {
-        const c = document.createElement('canvas');
-        c.width = 60; c.height = 60;
-        c.getContext('2d').putImageData(s.imageData, 0, 0);
-        wrap.appendChild(c);
-      } else {
-        wrap.classList.add('empty');
-        wrap.innerHTML = '<i class="fa-solid fa-microchip"></i>';
-      }
+      const img = new Image();
+      img.src = src;
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.objectFit = 'cover';
+      wrap.appendChild(img);
       thumbGrid.appendChild(wrap);
     });
   });
@@ -274,6 +291,7 @@ function takeSnapshot(cid) {
 
   extractFeatures(canvas).then(arr => {
     cls.samples.push({ features: arr, imageData: null });
+    addPreview(cls, canvas);
     updateCounts();
     renderThumbnails();
   }).catch(e => console.error('Snapshot Error:', e));
@@ -295,6 +313,7 @@ function startRecording(cid) {
       
       const arr = await extractFeatures(canvas);
       cls.samples.push({ features: arr, imageData: null });
+      addPreview(cls, canvas);
       
       // Update counts without full re-render
       updateCounts();
@@ -352,6 +371,7 @@ async function processImage(file, cls) {
         tmp.getContext('2d').drawImage(img, 0, 0, 224, 224);
         const arr = await extractFeatures(tmp);
         cls.samples.push({ features: arr, imageData: null });
+        addPreview(cls, img);
         URL.revokeObjectURL(url); resolve();
       } catch(e) { reject(e); }
     };
@@ -377,6 +397,7 @@ async function processVideo(file, cls) {
           tmp.getContext('2d').drawImage(vid, 0, 0, 224, 224);
           const arr = await extractFeatures(tmp);
           cls.samples.push({ features: arr, imageData: null });
+          if(i % 5 === 0) addPreview(cls, vid);
         }
         URL.revokeObjectURL(url); resolve();
       } catch(e) { reject(e); }
@@ -492,9 +513,6 @@ function initListeners() {
   $('ob-start').addEventListener('click', () => {
     $('onboarding-overlay').style.opacity = '0';
     setTimeout(() => { $('onboarding-overlay').style.display = 'none'; }, 600);
-    // Explicitly initialize camera only upon user interaction (fixes Vercel HTTPS / strict browsers)
-    startWebcam();
-    drawLoop();
   });
 
   cfgEpochs.addEventListener('input', () => { cfgEpochsVal.textContent = cfgEpochs.value; });
@@ -503,7 +521,7 @@ function initListeners() {
   btnTrain.addEventListener('click', trainModel);
   $('btn-add-class').addEventListener('click', () => {
     const id = nextClassId++;
-    classes.push({ id, label: `class_${id+1}`, samples: [], color: PALETTE[id % PALETTE.length] });
+    classes.push({ id, label: `class_${id+1}`, samples: [], previews: [], color: PALETTE[id % PALETTE.length] });
     renderAll();
   });
 
@@ -566,7 +584,7 @@ function initListeners() {
     try {
       const data = JSON.parse(await file.text());
       if (data.classes) {
-        classes = data.classes.map(c => ({ id: c.id, label: c.label, color: c.color, samples: (c.samples || []).map(f => ({ features: f, imageData: null })) }));
+        classes = data.classes.map(c => ({ id: c.id, label: c.label, color: c.color, samples: (c.samples || []).map(f => ({ features: f, imageData: null })), previews: [] }));
         nextClassId = Math.max(...classes.map(c => c.id)) + 1;
         logP('DATASET IMPORTED SUCCESSFULLY (JSON)', 'ok');
         renderAll();
@@ -715,8 +733,10 @@ async function dlJSON(obj, name) {
 (function init() {
   initListeners();
   loadMobileNet();
+  startWebcam();
+  drawLoop(); // FIX: Call drawLoop to start webcam canvas
   renderAll();
-  logP('SYSTEM INITIALIZED. WAITING FOR LAUNCH SEQUENCE...', 'sys');
+  logP('SYSTEM INITIALIZED. READY FOR INPUT.', 'sys');
 })();
 
 /*

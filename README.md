@@ -69,6 +69,6 @@ npm install -g live-server
 Navigate to your project folder and start the engine:
 ```bash
 cd path/to/My-trainer-main
-live-server
+live-server --open=trainer.html
 ```
-*(Alternatively, you can run `python -m http.server 8080`, and open `http://localhost:8080/` in Chrome).*
+*(Alternatively, you can run `python -m http.server 8080`, and open `http://localhost:8080/trainer.html` in Chrome).*
