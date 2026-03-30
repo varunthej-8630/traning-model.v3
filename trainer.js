@@ -273,6 +273,10 @@ async function startWebcam() {
 
 function drawLoop() {
   if (video.readyState >= 2) {
+    if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+    }
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
   }
   requestAnimationFrame(drawLoop);
